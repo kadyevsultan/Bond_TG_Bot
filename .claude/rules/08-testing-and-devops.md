@@ -80,5 +80,6 @@ Poetry 2.4.1, Python 3.12.2. `virtualenvs.create = false` в
 
 ## Git
 
-Ветка `main`, история короткая: `da434b0 first commit`, `9fe6409 feature done 1 stage`.
+Ветка `main`, история короткая: `da434b0 first commit`, `9fe6409 feature done 1 stage`,
+`fe875dc on board claude` (Session 001).
 Коммитить только по просьбе владельца.

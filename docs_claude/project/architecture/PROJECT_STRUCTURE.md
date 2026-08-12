@@ -1,6 +1,6 @@
 # Структура проекта
 
-> Снято 2026-08-12, коммит `9fe6409`. Дистиллят — `.claude/rules/03-architecture.md`.
+> Снято 2026-08-12, коммит `fe875dc` (Session 001). Дистиллят — `.claude/rules/03-architecture.md`.
 
 ## Дерево
 

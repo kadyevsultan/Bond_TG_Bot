@@ -1,5 +1,3 @@
-"""Конфигурация приложения, читается из .env."""
-
 from pathlib import Path
 from typing import Annotated
 
@@ -8,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _empty_to_none(value: object) -> object:
-    """Пустая строка в .env означает «не задано», а не ошибку разбора."""
     return None if value == "" else value
 
 

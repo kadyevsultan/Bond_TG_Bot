@@ -1,5 +1,3 @@
-"""Точка входа: запуск бота в режиме long polling."""
-
 import asyncio
 import logging
 
@@ -9,6 +7,8 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bond_bot.config import settings
+from bond_bot.infrastructure.database.seed import seed_builtin_themes
+from bond_bot.infrastructure.database.session import get_session, init_db
 from bond_bot.presentation.handlers import get_routers
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,10 @@ async def main() -> None:
         level=logging.INFO,
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     )
+
+    await init_db()
+    async with get_session() as session:
+        await seed_builtin_themes(session)
 
     bot = Bot(
         token=settings.bot_token,

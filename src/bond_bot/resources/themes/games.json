@@ -1,0 +1,213 @@
+{
+  "name": "Игры",
+  "words": [
+    {
+      "text": "Minecraft",
+      "similar": [
+        "Terraria",
+        "Roblox",
+        "Valheim"
+      ]
+    },
+    {
+      "text": "Roblox",
+      "similar": [
+        "Minecraft",
+        "Fortnite",
+        "Among Us"
+      ]
+    },
+    {
+      "text": "Fortnite",
+      "similar": [
+        "PUBG",
+        "Apex Legends",
+        "Warzone"
+      ]
+    },
+    {
+      "text": "PUBG",
+      "similar": [
+        "Fortnite",
+        "Warzone",
+        "Free Fire"
+      ]
+    },
+    {
+      "text": "Counter-Strike",
+      "similar": [
+        "Valorant",
+        "Rainbow Six",
+        "Call of Duty"
+      ]
+    },
+    {
+      "text": "Valorant",
+      "similar": [
+        "Counter-Strike",
+        "Overwatch",
+        "Apex Legends"
+      ]
+    },
+    {
+      "text": "Dota 2",
+      "similar": [
+        "League of Legends",
+        "Heroes of the Storm",
+        "Smite"
+      ]
+    },
+    {
+      "text": "League of Legends",
+      "similar": [
+        "Dota 2",
+        "Wild Rift",
+        "Smite"
+      ]
+    },
+    {
+      "text": "GTA",
+      "similar": [
+        "Mafia",
+        "Watch Dogs",
+        "Saints Row"
+      ]
+    },
+    {
+      "text": "The Witcher",
+      "similar": [
+        "Skyrim",
+        "Dragon Age",
+        "Elden Ring"
+      ]
+    },
+    {
+      "text": "Skyrim",
+      "similar": [
+        "The Witcher",
+        "Oblivion",
+        "Fallout"
+      ]
+    },
+    {
+      "text": "Elden Ring",
+      "similar": [
+        "Dark Souls",
+        "Bloodborne",
+        "Sekiro"
+      ]
+    },
+    {
+      "text": "Dark Souls",
+      "similar": [
+        "Elden Ring",
+        "Sekiro",
+        "Nioh"
+      ]
+    },
+    {
+      "text": "Cyberpunk 2077",
+      "similar": [
+        "Deus Ex",
+        "GTA",
+        "Watch Dogs"
+      ]
+    },
+    {
+      "text": "Among Us",
+      "similar": [
+        "Fall Guys",
+        "Goose Goose Duck",
+        "Мафия"
+      ]
+    },
+    {
+      "text": "Fall Guys",
+      "similar": [
+        "Among Us",
+        "Stumble Guys",
+        "Roblox"
+      ]
+    },
+    {
+      "text": "Overwatch",
+      "similar": [
+        "Valorant",
+        "Team Fortress 2",
+        "Paladins"
+      ]
+    },
+    {
+      "text": "Terraria",
+      "similar": [
+        "Minecraft",
+        "Starbound",
+        "Core Keeper"
+      ]
+    },
+    {
+      "text": "Stardew Valley",
+      "similar": [
+        "Harvest Moon",
+        "Animal Crossing",
+        "My Time at Portia"
+      ]
+    },
+    {
+      "text": "The Sims",
+      "similar": [
+        "Animal Crossing",
+        "SimCity",
+        "Second Life"
+      ]
+    },
+    {
+      "text": "FIFA",
+      "similar": [
+        "PES",
+        "NBA 2K",
+        "Madden"
+      ]
+    },
+    {
+      "text": "Mario",
+      "similar": [
+        "Sonic",
+        "Crash Bandicoot",
+        "Rayman"
+      ]
+    },
+    {
+      "text": "Zelda",
+      "similar": [
+        "Genshin Impact",
+        "Skyrim",
+        "Okami"
+      ]
+    },
+    {
+      "text": "Genshin Impact",
+      "similar": [
+        "Honkai Star Rail",
+        "Zelda",
+        "Tower of Fantasy"
+      ]
+    },
+    {
+      "text": "Tetris",
+      "similar": [
+        "Пасьянс",
+        "Змейка",
+        "Пакман"
+      ]
+    },
+    {
+      "text": "Angry Birds",
+      "similar": [
+        "Cut the Rope",
+        "Fruit Ninja",
+        "Plants vs Zombies"
+      ]
+    }
+  ]
+}

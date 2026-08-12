@@ -1,0 +1,213 @@
+{
+  "name": "Бренды",
+  "words": [
+    {
+      "text": "Apple",
+      "similar": [
+        "Samsung",
+        "Xiaomi",
+        "Huawei"
+      ]
+    },
+    {
+      "text": "Samsung",
+      "similar": [
+        "LG",
+        "Apple",
+        "Sony"
+      ]
+    },
+    {
+      "text": "Nike",
+      "similar": [
+        "Adidas",
+        "Puma",
+        "Reebok"
+      ]
+    },
+    {
+      "text": "Adidas",
+      "similar": [
+        "Nike",
+        "Puma",
+        "New Balance"
+      ]
+    },
+    {
+      "text": "Coca-Cola",
+      "similar": [
+        "Pepsi",
+        "Fanta",
+        "Sprite"
+      ]
+    },
+    {
+      "text": "Pepsi",
+      "similar": [
+        "Coca-Cola",
+        "7Up",
+        "Mirinda"
+      ]
+    },
+    {
+      "text": "McDonald's",
+      "similar": [
+        "Burger King",
+        "KFC",
+        "Wendy's"
+      ]
+    },
+    {
+      "text": "KFC",
+      "similar": [
+        "McDonald's",
+        "Burger King",
+        "Popeyes"
+      ]
+    },
+    {
+      "text": "Starbucks",
+      "similar": [
+        "Costa Coffee",
+        "Dunkin'",
+        "Cinnabon"
+      ]
+    },
+    {
+      "text": "IKEA",
+      "similar": [
+        "Leroy Merlin",
+        "JYSK",
+        "Hoff"
+      ]
+    },
+    {
+      "text": "Tesla",
+      "similar": [
+        "BMW",
+        "Mercedes",
+        "Rivian"
+      ]
+    },
+    {
+      "text": "BMW",
+      "similar": [
+        "Mercedes",
+        "Audi",
+        "Porsche"
+      ]
+    },
+    {
+      "text": "Mercedes",
+      "similar": [
+        "BMW",
+        "Audi",
+        "Lexus"
+      ]
+    },
+    {
+      "text": "Toyota",
+      "similar": [
+        "Honda",
+        "Nissan",
+        "Mazda"
+      ]
+    },
+    {
+      "text": "Google",
+      "similar": [
+        "Yandex",
+        "Microsoft",
+        "Yahoo"
+      ]
+    },
+    {
+      "text": "Microsoft",
+      "similar": [
+        "Apple",
+        "Google",
+        "IBM"
+      ]
+    },
+    {
+      "text": "Netflix",
+      "similar": [
+        "Disney+",
+        "HBO",
+        "Amazon Prime"
+      ]
+    },
+    {
+      "text": "YouTube",
+      "similar": [
+        "TikTok",
+        "Twitch",
+        "Vimeo"
+      ]
+    },
+    {
+      "text": "TikTok",
+      "similar": [
+        "Instagram",
+        "YouTube",
+        "Snapchat"
+      ]
+    },
+    {
+      "text": "Instagram",
+      "similar": [
+        "TikTok",
+        "Facebook",
+        "Pinterest"
+      ]
+    },
+    {
+      "text": "Telegram",
+      "similar": [
+        "WhatsApp",
+        "Signal",
+        "Viber"
+      ]
+    },
+    {
+      "text": "Amazon",
+      "similar": [
+        "eBay",
+        "AliExpress",
+        "Wildberries"
+      ]
+    },
+    {
+      "text": "Lego",
+      "similar": [
+        "Playmobil",
+        "Hasbro",
+        "Mattel"
+      ]
+    },
+    {
+      "text": "Sony",
+      "similar": [
+        "Nintendo",
+        "Microsoft",
+        "Panasonic"
+      ]
+    },
+    {
+      "text": "Nintendo",
+      "similar": [
+        "Sony",
+        "Sega",
+        "Microsoft"
+      ]
+    },
+    {
+      "text": "Rolex",
+      "similar": [
+        "Casio",
+        "Omega",
+        "Swatch"
+      ]
+    }
+  ]
+}

@@ -1,9 +1,7 @@
-"""Реестр роутеров. Порядок включения = порядок проверки апдейтов."""
-
 from aiogram import Router
 
 
 def get_routers() -> list[Router]:
-    from bond_bot.presentation.handlers import menu
+    from bond_bot.presentation.handlers import game, menu, themes
 
-    return [menu.router]
+    return [menu.router, themes.router, game.router]

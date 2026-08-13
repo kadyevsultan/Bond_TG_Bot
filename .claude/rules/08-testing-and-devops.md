@@ -77,6 +77,17 @@ Poetry 2.4.1, Python 3.12.2. `virtualenvs.create = false` в
 
 ## Деплой
 
+Выбран **serv00** (бесплатный FreeBSD-шелл, без карты) — пошаговая инструкция и скрипты:
+[docs_claude/project/deploy/serv00.md](../../docs_claude/project/deploy/serv00.md),
+`scripts/serv00/`. Там Docker не работает, бот живёт в venv под `tmux`, автозапуск через
+`cron @reboot` плюс watchdog каждые 5 минут.
+
+Главный нерешённый риск serv00: `pydantic-core` не имеет колёс для FreeBSD и требует Rust,
+которого в документации serv00 нет. Проверяется скриптом `scripts/serv00/check-deps.sh`
+**до** всей остальной установки.
+
+Docker-конфигурация остаётся для любого Linux-хостинга и для локальной работы.
+
 Docker, **multi-stage**. [Dockerfile](../../Dockerfile) +
 [docker-compose.yml](../../docker-compose.yml).
 

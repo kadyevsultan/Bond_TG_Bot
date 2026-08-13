@@ -242,6 +242,17 @@ push в main
 
 Пункты 1–4 дают работающий 24/7 бот, 5–7 — автоматический деплой.
 
+## 7. Решение владельца от 2026-08-13
+
+Выбран **serv00** — приоритет «без привязки карты». Инструкция:
+[deploy/serv00.md](../deploy/serv00.md).
+
+Что принято вместе с этим выбором: Docker на FreeBSD не работает, деплой ручной или по SSH,
+512 МБ RAM, и главный риск — сборка `pydantic-core` без готовых колёс для FreeBSD.
+Бескарточные альтернативы, если serv00 не пойдёт: Hugging Face Spaces (нужны keep-alive и
+синхронизация базы в Dataset), Amvera (111 ₽ стартового баланса без карты, хватает
+примерно на месяц).
+
 ## Источники
 
 - [Oracle: Always Free Resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)

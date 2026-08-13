@@ -26,7 +26,7 @@ async def repo():
     await engine.dispose()
 
 
-def test_only_owner_can_edit():
+def test_only_owner_can_edit_own_theme():
     mine = Theme(name="Мемы", owner_id=OWNER, is_builtin=False)
     builtin = Theme(name="Еда", owner_id=None, is_builtin=True)
 
@@ -38,13 +38,33 @@ def test_only_owner_can_edit():
 def test_admin_can_delete_any_custom_theme(monkeypatch):
     from bond_bot import config
 
-    monkeypatch.setattr(config.settings, "admin_id", ADMIN)
+    monkeypatch.setattr(config.settings, "admin_ids", [ADMIN])
     someone_else = Theme(name="Мемы", owner_id=OWNER, is_builtin=False)
-    builtin = Theme(name="Еда", owner_id=None, is_builtin=True)
 
     assert can_delete(someone_else, OWNER)
     assert can_delete(someone_else, ADMIN)
     assert not can_delete(someone_else, STRANGER)
+
+
+def test_admin_owns_builtin_themes(monkeypatch):
+    from bond_bot import config
+
+    monkeypatch.setattr(config.settings, "admin_ids", [ADMIN])
+    builtin = Theme(name="Еда", owner_id=None, is_builtin=True)
+
+    assert can_edit(builtin, ADMIN)
+    assert can_delete(builtin, ADMIN)
+    assert not can_edit(builtin, OWNER)
+    assert not can_delete(builtin, STRANGER)
+
+
+def test_builtin_stays_locked_without_admins(monkeypatch):
+    from bond_bot import config
+
+    monkeypatch.setattr(config.settings, "admin_ids", [])
+    builtin = Theme(name="Еда", owner_id=None, is_builtin=True)
+
+    assert not can_edit(builtin, ADMIN)
     assert not can_delete(builtin, ADMIN)
 
 
@@ -58,7 +78,7 @@ def test_author_label_depends_on_viewer():
 async def test_copy_gives_stranger_an_editable_duplicate(repo):
     original = await repo.create("Мемы", owner_id=OWNER)
     word = await repo.add_word(original, "Нож")
-    await repo.add_similar(word, "Вилка")
+    await repo.add_similar(original, word, "Вилка")
 
     copy = await repo.copy_to(original, STRANGER)
 
@@ -109,3 +129,68 @@ def test_theme_list_paginates(count):
 def test_word_card_text_explains_empty_similar_list():
     assert texts.NO_SIMILAR_HINT in texts.editor_word_card("Нож", [])
     assert "Вилка" in texts.editor_word_card("Нож", ["Вилка"])
+
+
+def test_trash_button_only_for_admin(monkeypatch):
+    from bond_bot import config
+
+    monkeypatch.setattr(config.settings, "admin_ids", [ADMIN])
+
+    def labels(is_admin):
+        return {b.text for row in kb.hub(is_admin=is_admin).inline_keyboard for b in row}
+
+    assert any("Корзина" in label for label in labels(True))
+    assert not any("Корзина" in label for label in labels(False))
+
+
+def test_deleted_theme_card_offers_restore():
+    theme = Theme(id=1, name="Еда", owner_id=None, is_builtin=True, is_deleted=True)
+    markup = kb.theme_card(theme, can_edit=True, can_delete=True, page=0)
+    labels = [b.text for row in markup.inline_keyboard for b in row]
+
+    assert any("Восстановить" in label for label in labels)
+    assert not any("Играть" in label for label in labels)
+    assert not any("Удалить" in label for label in labels)
+
+
+def test_deleted_theme_card_is_read_only_without_rights():
+    theme = Theme(id=1, name="Еда", owner_id=None, is_builtin=True, is_deleted=True)
+    markup = kb.theme_card(theme, can_edit=False, can_delete=False, page=0)
+    labels = [b.text for row in markup.inline_keyboard for b in row]
+
+    assert labels == ["⬅️ Назад"]
+
+
+def test_deleted_theme_card_text_warns():
+    body = texts.theme_card("Еда", 27, "встроенная тема", is_deleted=True)
+    assert "корзине" in body
+    assert "🗑" in body
+
+
+def theme_card_labels(theme, **rights):
+    markup = kb.theme_card(theme, page=0, **rights)
+    return [button.text for row in markup.inline_keyboard for button in row]
+
+
+def test_admin_keeps_copy_button_on_builtin_theme():
+    builtin = Theme(id=1, name="Еда", owner_id=None, is_builtin=True)
+    labels = theme_card_labels(builtin, can_edit=True, can_delete=True)
+
+    assert any("Скопировать" in label for label in labels)
+    assert any("Добавить слово" in label for label in labels)
+    assert any("Удалить тему" in label for label in labels)
+
+
+def test_own_theme_has_no_copy_button():
+    mine = Theme(id=2, name="Мемы", owner_id=OWNER, is_builtin=False)
+    labels = theme_card_labels(mine, can_edit=True, can_delete=True)
+
+    assert not any("Скопировать" in label for label in labels)
+
+
+def test_player_still_copies_builtin_theme():
+    builtin = Theme(id=1, name="Еда", owner_id=None, is_builtin=True)
+    labels = theme_card_labels(builtin, can_edit=False, can_delete=False)
+
+    assert any("Скопировать" in label for label in labels)
+    assert not any("Добавить слово" in label for label in labels)

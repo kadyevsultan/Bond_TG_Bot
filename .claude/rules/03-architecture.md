@@ -67,7 +67,6 @@ return [menu.router, themes.router, game.router]
 | `MenuCB` | `menu` | `action` | Главное меню, «В меню» |
 | `SetupCB` | `setup` | `step`, `value` | Мастер создания игры |
 | `GameCB` | `game` | `action`, `value` | Действия в партии, голосование |
-| `GuessCB` | `guess` | `index` | Выбор слова шпионом (индекс в `game.theme_words`) |
 | `ThemeCB` | `theme` | `action`, `theme_id`, `word_id`, `page` | Редактор и каталог |
 
 Telegram ограничивает callback_data 64 байтами. Не добавлять в фабрики строковые поля

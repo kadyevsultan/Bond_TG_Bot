@@ -10,6 +10,8 @@ class SpyMode(str, Enum):
 
     DOUBLE_AGENT = "double_agent"
 
+    MUSIC = "music"
+
 
 class Phase(str, Enum):
 
@@ -89,7 +91,6 @@ class Game:
     civilian_word: str
     spy_mode: SpyMode
     players: list[Player]
-    theme_words: list[str]
 
     phase: Phase = Phase.DEALING
     dealt_count: int = 0

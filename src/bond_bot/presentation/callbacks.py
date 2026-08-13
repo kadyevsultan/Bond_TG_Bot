@@ -17,10 +17,6 @@ class GameCB(CallbackData, prefix="game"):
     value: int = 0
 
 
-class GuessCB(CallbackData, prefix="guess"):
-    index: int
-
-
 class ThemeCB(CallbackData, prefix="theme"):
     action: str
     theme_id: int = 0

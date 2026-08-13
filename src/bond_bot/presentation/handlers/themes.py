@@ -20,18 +20,20 @@ MAX_LEN = 64
 
 
 def can_edit(theme: Theme, user_id: int) -> bool:
-    return not theme.is_builtin and theme.owner_id == user_id
+    if theme.is_builtin:
+        return settings.is_admin(user_id)
+    return theme.owner_id == user_id
 
 
 def can_delete(theme: Theme, user_id: int) -> bool:
     if theme.is_builtin:
-        return False
-    return theme.owner_id == user_id or user_id == settings.admin_id
+        return settings.is_admin(user_id)
+    return theme.owner_id == user_id or settings.is_admin(user_id)
 
 
 def author_of(theme: Theme, user_id: int) -> str:
     if theme.is_builtin:
-        return "встроенная тема"
+        return "встроенная тема — правит админ" if settings.is_admin(user_id) else "встроенная тема"
     return "вы" if theme.owner_id == user_id else "другой игрок"
 
 
@@ -39,8 +41,12 @@ def author_of(theme: Theme, user_id: int) -> str:
 @router.callback_query(ThemeCB.filter(F.action == "hub"))
 async def hub(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await callback.message.edit_text(texts.THEMES_HUB, reply_markup=kb.hub())
+    await callback.message.edit_text(texts.THEMES_HUB, reply_markup=_hub_for(callback.from_user.id))
     await callback.answer()
+
+
+def _hub_for(user_id: int):
+    return kb.hub(is_admin=settings.is_admin(user_id))
 
 
 @router.callback_query(ThemeCB.filter(F.action == "noop"))
@@ -55,7 +61,9 @@ async def my_themes(callback: CallbackQuery, callback_data: ThemeCB, state: FSMC
         themes = await ThemeRepository(session).owned_by(callback.from_user.id)
 
     if not themes:
-        await callback.message.edit_text(texts.MY_THEMES_EMPTY, reply_markup=kb.hub())
+        await callback.message.edit_text(
+            texts.MY_THEMES_EMPTY, reply_markup=_hub_for(callback.from_user.id)
+        )
         await callback.answer()
         return
 
@@ -68,6 +76,63 @@ async def my_themes(callback: CallbackQuery, callback_data: ThemeCB, state: FSMC
     await callback.answer()
 
 
+@router.callback_query(ThemeCB.filter(F.action == "builtin"))
+async def builtin_themes(
+    callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext
+) -> None:
+    await state.update_data(list_action="builtin")
+    async with get_session() as session:
+        themes = await ThemeRepository(session).builtin()
+
+    page = callback_data.page
+    chunk = themes[page * kb.PAGE_SIZE : (page + 1) * kb.PAGE_SIZE]
+    await callback.message.edit_text(
+        texts.builtin_themes(len(themes)),
+        reply_markup=kb.theme_list(chunk, "builtin", page, len(themes)),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ThemeCB.filter(F.action == "trash"))
+async def trash(callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext) -> None:
+    user_id = callback.from_user.id
+    if not settings.is_admin(user_id):
+        await callback.answer(texts.ADMINS_ONLY, show_alert=True)
+        return
+
+    await state.update_data(list_action="trash")
+    async with get_session() as session:
+        themes = await ThemeRepository(session).deleted()
+
+    if not themes:
+        await callback.message.edit_text(texts.TRASH_EMPTY, reply_markup=_hub_for(user_id))
+        await callback.answer()
+        return
+
+    page = callback_data.page
+    chunk = themes[page * kb.PAGE_SIZE : (page + 1) * kb.PAGE_SIZE]
+    await callback.message.edit_text(
+        texts.trash(len(themes)),
+        reply_markup=kb.theme_list(chunk, "trash", page, len(themes)),
+    )
+    await callback.answer()
+
+
+@router.callback_query(ThemeCB.filter(F.action == "restore"))
+async def restore_theme(callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext) -> None:
+    user_id = callback.from_user.id
+    async with get_session() as session:
+        repo = ThemeRepository(session)
+        theme = await repo.get(callback_data.theme_id)
+        if theme is None or not can_delete(theme, user_id):
+            await callback.answer(texts.ADMINS_ONLY, show_alert=True)
+            return
+        await repo.restore_theme(theme)
+
+    await callback.answer("Тема восстановлена")
+    await trash(callback, ThemeCB(action="trash"), state)
+
+
 @router.callback_query(ThemeCB.filter(F.action == "catalog"))
 async def catalog(callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext) -> None:
     await state.update_data(list_action="catalog")
@@ -78,7 +143,9 @@ async def catalog(callback: CallbackQuery, callback_data: ThemeCB, state: FSMCon
         chunk = await repo.catalog(limit=kb.PAGE_SIZE, offset=page * kb.PAGE_SIZE)
 
     if not total:
-        await callback.message.edit_text(texts.CATALOG_EMPTY, reply_markup=kb.hub())
+        await callback.message.edit_text(
+            texts.CATALOG_EMPTY, reply_markup=_hub_for(callback.from_user.id)
+        )
         await callback.answer()
         return
 
@@ -92,8 +159,13 @@ async def catalog(callback: CallbackQuery, callback_data: ThemeCB, state: FSMCon
 @router.callback_query(ThemeCB.filter(F.action == "back_list"))
 async def back_to_list(callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext) -> None:
     data = await state.get_data()
-    if data.get("list_action") == "catalog":
+    list_action = data.get("list_action")
+    if list_action == "catalog":
         await catalog(callback, callback_data, state)
+    elif list_action == "trash":
+        await trash(callback, callback_data, state)
+    elif list_action == "builtin":
+        await builtin_themes(callback, callback_data, state)
     else:
         await my_themes(callback, callback_data, state)
 
@@ -104,7 +176,7 @@ async def open_theme(callback: CallbackQuery, callback_data: ThemeCB, state: FSM
     user_id = callback.from_user.id
     async with get_session() as session:
         theme = await ThemeRepository(session).get(callback_data.theme_id)
-        if theme is None:
+        if theme is None or (theme.is_deleted and not settings.is_admin(user_id)):
             await callback.answer("Тема не найдена", show_alert=True)
             return
         markup = kb.theme_card(
@@ -113,7 +185,12 @@ async def open_theme(callback: CallbackQuery, callback_data: ThemeCB, state: FSM
             can_delete=can_delete(theme, user_id),
             page=callback_data.page,
         )
-        body = texts.theme_card(theme.name, theme.word_count, author_of(theme, user_id))
+        body = texts.theme_card(
+            theme.name,
+            theme.word_count,
+            author_of(theme, user_id),
+            is_deleted=theme.is_deleted,
+        )
 
     await callback.message.edit_text(body, reply_markup=markup)
     await callback.answer()
@@ -215,7 +292,12 @@ async def ask_word(callback: CallbackQuery, callback_data: ThemeCB, state: FSMCo
 @router.message(ThemeEditor.word)
 async def receive_word(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
-    theme_id = data["theme_id"]
+    theme_id = data.get("theme_id")
+    if theme_id is None:
+        await state.clear()
+        await message.answer(texts.INPUT_LOST, reply_markup=_hub_for(message.from_user.id))
+        return
+
     lines = _clean_lines(message.text)
     if not lines:
         return
@@ -224,7 +306,7 @@ async def receive_word(message: Message, state: FSMContext) -> None:
         repo = ThemeRepository(session)
         theme = await repo.get(theme_id)
         if theme is None or not can_edit(theme, message.from_user.id):
-            await message.answer(texts.NOT_YOUR_THEME, reply_markup=kb.hub())
+            await message.answer(texts.NOT_YOUR_THEME, reply_markup=_hub_for(message.from_user.id))
             return
 
         added, skipped = [], []
@@ -269,16 +351,22 @@ async def ask_similar(callback: CallbackQuery, callback_data: ThemeCB, state: FS
 @router.message(ThemeEditor.similar)
 async def receive_similar(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
+    theme_id, word_id = data.get("theme_id"), data.get("word_id")
+    if theme_id is None or word_id is None:
+        await state.clear()
+        await message.answer(texts.INPUT_LOST, reply_markup=_hub_for(message.from_user.id))
+        return
+
     lines = _clean_lines(message.text)
     if not lines:
         return
 
     async with get_session() as session:
         repo = ThemeRepository(session)
-        theme = await repo.get(data["theme_id"])
-        word = await repo.get_word(data["word_id"])
+        theme = await repo.get(theme_id)
+        word = await repo.get_word(word_id)
         if theme is None or word is None or not can_edit(theme, message.from_user.id):
-            await message.answer(texts.NOT_YOUR_THEME, reply_markup=kb.hub())
+            await message.answer(texts.NOT_YOUR_THEME, reply_markup=_hub_for(message.from_user.id))
             return
 
         added, skipped = [], []
@@ -287,12 +375,12 @@ async def receive_similar(message: Message, state: FSMContext) -> None:
                 skipped.append(line)
                 continue
             try:
-                await repo.add_similar(word, line)
+                await repo.add_similar(theme, word, line)
                 added.append(line)
             except DuplicateError:
                 skipped.append(line)
 
-        word = await repo.get_word(data["word_id"])
+        word = await repo.get_word(word_id)
         body = texts.added_words(added, skipped)
         card = texts.editor_word_card(word.text, [s.text for s in word.similar])
         markup = kb.word_card(theme, word, can_edit=True, page=0)
@@ -308,7 +396,7 @@ async def delete_similar(callback: CallbackQuery, callback_data: ThemeCB) -> Non
         if theme is None or not can_edit(theme, callback.from_user.id):
             await callback.answer(texts.NOT_YOUR_THEME, show_alert=True)
             return
-        await repo.delete_similar(callback_data.word_id)
+        await repo.delete_similar(theme, callback_data.word_id)
 
     await callback.answer("Удалено")
     await show_words(callback, ThemeCB(action="words", theme_id=callback_data.theme_id, page=0))
@@ -322,7 +410,7 @@ async def delete_word(callback: CallbackQuery, callback_data: ThemeCB) -> None:
         if theme is None or not can_edit(theme, callback.from_user.id):
             await callback.answer(texts.NOT_YOUR_THEME, show_alert=True)
             return
-        await repo.delete_word(callback_data.word_id)
+        await repo.delete_word(theme, callback_data.word_id)
 
     await callback.answer("Слово удалено")
     await show_words(
@@ -353,9 +441,11 @@ async def delete_theme(callback: CallbackQuery, callback_data: ThemeCB) -> None:
         if theme is None or not can_delete(theme, callback.from_user.id):
             await callback.answer(texts.NOT_YOUR_THEME, show_alert=True)
             return
+        was_builtin = theme.is_builtin
         await repo.delete_theme(theme)
 
-    await callback.message.edit_text(texts.THEME_DELETED, reply_markup=kb.hub())
+    body = texts.BUILTIN_THEME_DELETED if was_builtin else texts.THEME_DELETED
+    await callback.message.edit_text(body, reply_markup=_hub_for(callback.from_user.id))
     await callback.answer()
 
 
@@ -379,7 +469,10 @@ async def copy_theme(callback: CallbackQuery, callback_data: ThemeCB) -> None:
 async def play_theme(callback: CallbackQuery, callback_data: ThemeCB, state: FSMContext) -> None:
     async with get_session() as session:
         theme = await ThemeRepository(session).get(callback_data.theme_id)
-        if theme is None or not theme.word_count:
+        if theme is None or theme.is_deleted:
+            await callback.answer("Тема не найдена", show_alert=True)
+            return
+        if not theme.word_count:
             await callback.answer("В теме нет слов", show_alert=True)
             return
 

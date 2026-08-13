@@ -9,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from bond_bot.config import settings
 from bond_bot.infrastructure.database.seed import seed_builtin_themes
 from bond_bot.infrastructure.database.session import get_session, init_db
+from bond_bot.presentation import errors
 from bond_bot.presentation.handlers import get_routers
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ async def main() -> None:
     )
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_routers(*get_routers())
+    errors.register(dp)
 
     await bot.delete_webhook(drop_pending_updates=True)
     logger.info("Бот запущен")

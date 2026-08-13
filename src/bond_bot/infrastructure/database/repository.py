@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,20 +24,30 @@ class ThemeRepository:
 
     async def builtin(self) -> list[Theme]:
         result = await self.session.scalars(
-            select(Theme).where(Theme.is_builtin.is_(True)).order_by(Theme.name)
+            select(Theme)
+            .where(Theme.is_builtin.is_(True), Theme.is_deleted.is_(False))
+            .order_by(Theme.name)
+        )
+        return list(result)
+
+    async def deleted(self) -> list[Theme]:
+        result = await self.session.scalars(
+            select(Theme).where(Theme.is_deleted.is_(True)).order_by(Theme.name)
         )
         return list(result)
 
     async def owned_by(self, owner_id: int) -> list[Theme]:
         result = await self.session.scalars(
-            select(Theme).where(Theme.owner_id == owner_id).order_by(Theme.name)
+            select(Theme)
+            .where(Theme.owner_id == owner_id, Theme.is_deleted.is_(False))
+            .order_by(Theme.name)
         )
         return list(result)
 
     async def catalog(self, limit: int = 50, offset: int = 0) -> list[Theme]:
         result = await self.session.scalars(
             select(Theme)
-            .where(Theme.is_builtin.is_(False))
+            .where(Theme.is_builtin.is_(False), Theme.is_deleted.is_(False))
             .order_by(Theme.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -44,7 +56,9 @@ class ThemeRepository:
 
     async def catalog_size(self) -> int:
         return await self.session.scalar(
-            select(func.count()).select_from(Theme).where(Theme.is_builtin.is_(False))
+            select(func.count())
+            .select_from(Theme)
+            .where(Theme.is_builtin.is_(False), Theme.is_deleted.is_(False))
         ) or 0
 
     async def snapshot(self, theme_id: int) -> ThemeSnapshot | None:
@@ -67,19 +81,31 @@ class ThemeRepository:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise DuplicateError(f"Тема «{name}» у вас уже есть") from exc
+            raise DuplicateError(f"Тема «{escape(name)}» у вас уже есть") from exc
         return theme
+
+    def _mark_customized(self, theme: Theme) -> None:
+        if theme.is_builtin:
+            theme.is_customized = True
 
     async def rename(self, theme: Theme, name: str) -> None:
         theme.name = name.strip()
+        self._mark_customized(theme)
         try:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise DuplicateError(f"Тема «{name}» у вас уже есть") from exc
+            raise DuplicateError(f"Тема «{escape(name)}» у вас уже есть") from exc
 
     async def delete_theme(self, theme: Theme) -> None:
-        await self.session.delete(theme)
+        if theme.is_builtin:
+            theme.is_deleted = True
+        else:
+            await self.session.delete(theme)
+        await self.session.commit()
+
+    async def restore_theme(self, theme: Theme) -> None:
+        theme.is_deleted = False
         await self.session.commit()
 
     async def copy_to(self, theme: Theme, owner_id: int) -> Theme:
@@ -121,15 +147,17 @@ class ThemeRepository:
     async def add_word(self, theme: Theme, text: str) -> Word:
         word = Word(theme_id=theme.id, text=text.strip())
         self.session.add(word)
+        self._mark_customized(theme)
         try:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise DuplicateError(f"Слово «{text}» уже есть в теме") from exc
+            raise DuplicateError(f"Слово «{escape(text)}» уже есть в теме") from exc
         await self.session.refresh(theme)
         return word
 
-    async def delete_word(self, word_id: int) -> None:
+    async def delete_word(self, theme: Theme, word_id: int) -> None:
+        self._mark_customized(theme)
         await self.session.execute(delete(Word).where(Word.id == word_id))
         await self.session.commit()
 
@@ -137,17 +165,19 @@ class ThemeRepository:
         return await self.session.get(Word, word_id)
 
 
-    async def add_similar(self, word: Word, text: str) -> SimilarWord:
+    async def add_similar(self, theme: Theme, word: Word, text: str) -> SimilarWord:
         similar = SimilarWord(word_id=word.id, text=text.strip())
         self.session.add(similar)
+        self._mark_customized(theme)
         try:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise DuplicateError(f"«{text}» уже в списке похожих") from exc
+            raise DuplicateError(f"«{escape(text)}» уже в списке похожих") from exc
         await self.session.refresh(word)
         return similar
 
-    async def delete_similar(self, similar_id: int) -> None:
+    async def delete_similar(self, theme: Theme, similar_id: int) -> None:
+        self._mark_customized(theme)
         await self.session.execute(delete(SimilarWord).where(SimilarWord.id == similar_id))
         await self.session.commit()

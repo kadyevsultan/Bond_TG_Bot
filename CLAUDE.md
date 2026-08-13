@@ -33,6 +33,13 @@ session.add(theme); await session.flush()  await session.scalars(
 theme.words                                    select(Word).where(Word.theme_id == theme.id))
 ```
 
+**Пользовательский текст в HTML без `html.escape()`.** Тема с `&` в названии перестанет
+открываться: Telegram отвергнет разметку.
+```python
+# WRONG                                    # RIGHT
+f"📗 <b>{name}</b>"                        f"📗 <b>{escape(name)}</b>"
+```
+
 **`message.answer()` в сценарии партии.** Слово останется в истории — подсмотрят.
 ```python
 # WRONG                                    # RIGHT
@@ -49,6 +56,7 @@ await callback.message.answer(card)        await callback.message.edit_text(card
 - Весь SQL — только в `ThemeRepository`
 - Каждый `callback_query`-хендлер завершается `await callback.answer()`
 - Правка `domain/engine.py` → тест в `tests/test_engine.py`
+- Правка модели в `infrastructure/database/models.py` → `poetry run alembic revision --autogenerate`
 - Перед словами «готово»: `poetry run pytest` **и** `poetry run ruff check src/ tests/`
 
 ## АРХИТЕКТУРА
@@ -56,7 +64,9 @@ await callback.message.answer(card)        await callback.message.edit_text(card
 - `domain/` — чистые правила игры → `core/registry.py` — партии в памяти по `chat_id`
 - `infrastructure/database/` — только темы и слова; партии в БД не пишутся
 - `presentation/` — handlers → keyboards → texts; роутеры: `[menu, themes, game]`, порядок важен
-- Вход: `__main__.py` → `init_db()` → `seed_builtin_themes()` → polling
+- Вход: `__main__.py` → `init_db()` (= `alembic upgrade head`) → `seed_builtin_themes()`
+  → `errors.register(dp)` → polling
+- Деплой: `docker compose up -d --build`; volume на `/data` обязателен, иначе БД в слое
 - Состояние партии меняет **только** `engine.py`, хендлеры фазу не присваивают
 
 ## ИНВАРИАНТЫ
@@ -69,8 +79,14 @@ await callback.message.answer(card)        await callback.message.edit_text(card
 3. **Выбывший не голосует и не может быть целью** — иначе счёт голосов врёт.
 4. **Порядок проверки конца игры**: сначала «все шпионы выбыли», потом «живых ≤ 2».
    Обратный порядок отдаёт победу не тем.
-5. **Догадка шпиона необратима** — проверяет бот, партия сразу `FINISHED`.
-6. **Встроенные темы (`is_builtin`) не редактирует и не удаляет никто**, включая админа.
+5. **Догадка шпиона необратима** — вердикт «угадал/не угадал» ставит хост, партия сразу
+   `FINISHED`. Список слов шпиону не показывается: он назвал бы самое подходящее.
+6. **Встроенные темы правит и удаляет только админ** (`settings.is_admin`), обычный игрок —
+   нет. Любая правка ставит `is_customized=True`, и сид перестаёт синхронизировать эту тему
+   с JSON: источник правды — база. Удаление встроенной темы **мягкое** (`is_deleted=True`):
+   слова остаются, тема уходит в корзину и восстанавливается кнопкой. Сид ищет тему по
+   `source_name` (имя из JSON), а не по `name` — поэтому переименование не создаёт дубликат.
+   Пользовательские темы удаляются по-настоящему.
 7. **Каталог открыт для всех без модерации** — это цель проекта, не упущение.
 
 ## НЕ РАЦИОНАЛИЗИРОВАТЬ

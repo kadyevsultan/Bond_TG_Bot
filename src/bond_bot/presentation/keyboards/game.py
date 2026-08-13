@@ -5,7 +5,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bond_bot.domain.engine import max_spies
 from bond_bot.domain.entities import Game, Player, SpyMode
-from bond_bot.presentation.callbacks import GameCB, GuessCB, MenuCB, SetupCB
+from bond_bot.presentation.callbacks import GameCB, MenuCB, SetupCB
 
 MIN_PLAYERS = 3
 MAX_PLAYERS = 20
@@ -60,6 +60,10 @@ def spy_mode() -> InlineKeyboardMarkup:
         text="🎭 Двойной агент",
         callback_data=SetupCB(step="mode", value=SpyMode.DOUBLE_AGENT.value),
     )
+    builder.button(
+        text="🎵 Музыкальный",
+        callback_data=SetupCB(step="mode", value=SpyMode.MUSIC.value),
+    )
     builder.button(text="⬅️ Назад", callback_data=SetupCB(step="back_spies"))
     builder.adjust(1)
     return builder.as_markup()
@@ -83,7 +87,7 @@ def hide(is_last: bool) -> InlineKeyboardMarkup:
 def discussion(game: Game) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="🗳 Начать голосование", callback_data=GameCB(action="open_voting"))
-    if game.spy_mode is SpyMode.CLASSIC:
+    if game.spy_mode is not SpyMode.DOUBLE_AGENT:
         builder.button(text="🎯 Шпион называет слово", callback_data=GameCB(action="spy_guess"))
     builder.button(text="🛑 Завершить игру", callback_data=GameCB(action="cancel"))
     builder.adjust(1)
@@ -120,10 +124,10 @@ def spy_guess_confirm() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def guess_words(words: list[str]) -> InlineKeyboardMarkup:
+def guess_verdict() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for index, word in enumerate(words):
-        builder.button(text=word, callback_data=GuessCB(index=index))
+    builder.button(text="✅ Угадал", callback_data=GameCB(action="guess_yes"))
+    builder.button(text="❌ Не угадал", callback_data=GameCB(action="guess_no"))
     builder.adjust(2)
     return builder.as_markup()
 

@@ -59,7 +59,6 @@ def start_game(
         civilian_word=card.text,
         spy_mode=spy_mode,
         players=players,
-        theme_words=theme.words,
     )
 
 
@@ -172,11 +171,10 @@ def open_spy_guess(game: Game) -> None:
     game.phase = Phase.SPY_GUESS
 
 
-def submit_spy_guess(game: Game, word: str) -> bool:
+def resolve_spy_guess(game: Game, correct: bool) -> bool:
     if game.phase is not Phase.SPY_GUESS:
         raise GameError("Шпион сейчас не называет слово")
 
-    correct = word == game.civilian_word
     _finish(
         game,
         Outcome.SPIES_BY_GUESS if correct else Outcome.CIVILIANS_BY_WRONG_GUESS,

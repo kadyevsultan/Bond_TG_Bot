@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from bond_bot.domain.entities import Game, Outcome, Player, SpyMode
 
 GREETING = (
@@ -26,7 +28,9 @@ RULES = (
     "• шпион назвал слово верно\n\n"
     "<b>Режимы</b>\n"
     "🕵️ <b>Классика</b> — шпион не знает слова\n"
-    "🎭 <b>Двойной агент</b> — шпион получает похожее слово и сам не знает, что оно другое"
+    "🎭 <b>Двойной агент</b> — шпион получает похожее слово и сам не знает, что оно другое\n"
+    "🎵 <b>Музыкальный</b> — вопросов нет: каждый по кругу ставит трек под своё слово, "
+    "шпион слушает и подстраивается"
 )
 
 CHOOSE_THEME = "📚 <b>Выберите тему</b>\n\nРядом с названием — сколько в ней слов."
@@ -45,26 +49,36 @@ def choose_spies(players: int, max_spies: int) -> str:
 def choose_mode(theme: str, players: int, spies: int) -> str:
     return (
         f"🎭 <b>Режим шпиона</b>\n\n"
-        f"Тема: <b>{theme}</b>\nИгроков: {players}\nШпионов: {spies}\n\n"
+        f"Тема: <b>{escape(theme)}</b>\nИгроков: {players}\nШпионов: {spies}\n\n"
         f"🕵️ <b>Классика</b> — шпион вообще не знает слова\n"
-        f"🎭 <b>Двойной агент</b> — шпион получает похожее слово"
+        f"🎭 <b>Двойной агент</b> — шпион получает похожее слово\n"
+        f"🎵 <b>Музыкальный</b> — вместо вопросов каждый ставит трек под своё слово"
     )
 
 
 def pass_phone(game: Game, player: Player) -> str:
     return (
         f"📱 <b>Передайте телефон: {player.label}</b>\n\n"
-        f"Тема: <b>{game.theme_name}</b>\n"
+        f"Тема: <b>{escape(game.theme_name)}</b>\n"
         f"Игрок {player.number} из {len(game.players)}\n\n"
         f"Остальные не подглядывают."
     )
 
 
 def word_card(game: Game, player: Player) -> str:
-    if player.is_spy and (game.spy_mode is SpyMode.CLASSIC or player.word is None):
-        body = "🔴 <b>Вы шпион</b>\n\nСлова вы не знаете. Слушайте и притворяйтесь своим."
+    music = game.spy_mode is SpyMode.MUSIC
+    if player.is_spy and (game.spy_mode is not SpyMode.DOUBLE_AGENT or player.word is None):
+        if music:
+            body = (
+                "🔴 <b>Вы шпион</b>\n\n"
+                "Слова вы не знаете. Слушайте чужие треки и ставьте похожее."
+            )
+        else:
+            body = "🔴 <b>Вы шпион</b>\n\nСлова вы не знаете. Слушайте и притворяйтесь своим."
+    elif music:
+        body = f"Ставьте трек под слово:\n\n🔵 <b>{escape(player.word or '')}</b>"
     else:
-        body = f"Ваше слово:\n\n🔵 <b>{player.word}</b>"
+        body = f"Ваше слово:\n\n🔵 <b>{escape(player.word or '')}</b>"
     return f"👤 <b>{player.label}</b>\n\n{body}"
 
 
@@ -73,14 +87,20 @@ def discussion(game: Game) -> str:
     lines = [
         f"💬 <b>Обсуждение — раунд {game.round_number}</b>",
         "",
-        f"Тема: <b>{game.theme_name}</b>",
+        f"Тема: <b>{escape(game.theme_name)}</b>",
         f"В игре: {alive}",
     ]
     if game.last_eliminated:
         lines.append("")
         lines.append(eliminated_line(game))
     lines.append("")
-    lines.append("Задавайте вопросы. Когда будете готовы — начинайте голосование.")
+    if game.spy_mode is SpyMode.MUSIC:
+        lines.append(
+            "Каждый по кругу ставит трек под своё слово, потом обсуждаете. "
+            "Когда будете готовы — начинайте голосование."
+        )
+    else:
+        lines.append("Задавайте вопросы. Когда будете готовы — начинайте голосование.")
     return "\n".join(lines)
 
 
@@ -113,12 +133,11 @@ def tie(numbers: list[int]) -> str:
 
 SPY_GUESS_WARNING = (
     "🎯 <b>Шпион называет слово</b>\n\n"
-    "Передайте телефон шпиону. Он выберет слово из списка темы, "
-    "и бот сразу объявит результат.\n\n"
+    "Шпион говорит своё слово вслух, вы отмечаете, угадал он или нет.\n\n"
     "Решение необратимо."
 )
 
-SPY_GUESS_PICK = "🎯 <b>Шпион, выберите слово</b>"
+SPY_GUESS_VERDICT = "🎯 <b>Шпион назвал слово</b>\n\nОн угадал?"
 
 
 def finished(game: Game) -> str:
@@ -141,8 +160,8 @@ def finished(game: Game) -> str:
 
     return (
         f"{headline}\n\n"
-        f"Тема: <b>{game.theme_name}</b>\n"
-        f"Загаданное слово: <b>{game.civilian_word}</b>\n\n"
+        f"Тема: <b>{escape(game.theme_name)}</b>\n"
+        f"Загаданное слово: <b>{escape(game.civilian_word)}</b>\n\n"
         + "\n".join(roles)
     )
 
@@ -159,7 +178,11 @@ ASK_THEME_NAME = "➕ <b>Новая тема</b>\n\nПришлите назва�
 THEME_NAME_TOO_LONG = "Название слишком длинное, максимум 64 символа."
 WORD_TOO_LONG = "Слово слишком длинное, максимум 64 символа."
 NOT_YOUR_THEME = "Эту тему может редактировать только её автор."
+INPUT_LOST = "Бот перезапускался и потерял, куда добавить слово. Откройте тему заново."
 THEME_DELETED = "🗑 Тема удалена."
+BUILTIN_THEME_DELETED = "🗑 Тема убрана в корзину. Её можно восстановить со всеми словами."
+ADMINS_ONLY = "Это может только админ."
+TRASH_EMPTY = "Корзина пуста."
 NO_SIMILAR_HINT = (
     "Похожих слов нет. В режиме «Двойной агент» шпиону достанется "
     "случайное другое слово темы."
@@ -170,55 +193,73 @@ def my_themes(count: int) -> str:
     return f"📁 <b>Мои темы</b>\n\nВсего: {count}"
 
 
+def builtin_themes(count: int) -> str:
+    return f"📚 <b>Встроенные темы</b>\n\nВсего: {count}"
+
+
+def trash(count: int) -> str:
+    return (
+        f"🗑 <b>Корзина</b>\n\nУдалённых тем: {count}\n\n"
+        f"Слова сохранены. Откройте тему, чтобы восстановить её."
+    )
+
+
 def catalog(count: int) -> str:
     return f"🌍 <b>Каталог тем</b>\n\nДоступно тем: {count}"
 
 
-def theme_card(name: str, words: int, author: str) -> str:
-    return f"📗 <b>{name}</b>\n\nСлов: {words}\nАвтор: {author}"
+def theme_card(name: str, words: int, author: str, is_deleted: bool = False) -> str:
+    icon = "🗑" if is_deleted else "📗"
+    note = "\n\nТема в корзине — игроки её не видят." if is_deleted else ""
+    return f"{icon} <b>{escape(name)}</b>\n\nСлов: {words}\nАвтор: {author}{note}"
 
 
 def word_list(theme_name: str, count: int) -> str:
     return (
-        f"✏️ <b>{theme_name}</b>\n\n"
+        f"✏️ <b>{escape(theme_name)}</b>\n\n"
         f"Слов: {count}. Рядом с каждым — сколько у него похожих слов.\n\n"
         f"Нажмите на слово, чтобы открыть его."
     )
 
 
 def editor_word_card(word: str, similar: list[str]) -> str:
-    listed = "\n".join(f"• {s}" for s in similar)
+    listed = "\n".join(f"• {escape(s)}" for s in similar)
     body = f"Похожие слова:\n{listed}" if similar else NO_SIMILAR_HINT
-    return f"🔤 <b>{word}</b>\n\n{body}"
+    return f"🔤 <b>{escape(word)}</b>\n\n{body}"
 
 
 def ask_word(theme_name: str) -> str:
     return (
-        f"➕ <b>Новое слово в тему «{theme_name}»</b>\n\n"
+        f"➕ <b>Новое слово в тему «{escape(theme_name)}»</b>\n\n"
         f"Пришлите слово. Можно несколько сразу — каждое с новой строки."
     )
 
 
 def ask_similar(word: str) -> str:
     return (
-        f"➕ <b>Похожее слово к «{word}»</b>\n\n"
-        f"Пришлите слово, которое может достаться шпиону вместо «{word}». "
+        f"➕ <b>Похожее слово к «{escape(word)}»</b>\n\n"
+        f"Пришлите слово, которое может достаться шпиону вместо «{escape(word)}». "
         f"Можно несколько сразу — каждое с новой строки."
     )
 
 
 def confirm_delete(name: str) -> str:
-    return f"🗑 Удалить тему <b>{name}</b> вместе со всеми словами?"
+    return f"🗑 Удалить тему <b>{escape(name)}</b> вместе со всеми словами?"
 
 
 def added_words(added: list[str], skipped: list[str]) -> str:
     lines = []
     if added:
-        lines.append("✅ Добавлено: " + ", ".join(added))
+        lines.append("✅ Добавлено: " + ", ".join(escape(item) for item in added))
     if skipped:
-        lines.append("⚠️ Уже было: " + ", ".join(skipped))
+        lines.append("⚠️ Уже было: " + ", ".join(escape(item) for item in skipped))
     return "\n".join(lines) if lines else "Ничего не добавлено."
 
+
+UNEXPECTED_ERROR = (
+    "⚠️ Что-то пошло не так, и бот потерял этот экран.\n\n"
+    "Темы и слова на месте. Начните заново из меню."
+)
 
 GAME_CANCELLED = "🛑 Игра отменена."
 NO_ACTIVE_GAME = "Игра не найдена — начните новую."

@@ -2,8 +2,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, UniqueConstraint, event, func
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+@event.listens_for(Engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, _record) -> None:
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 class Base(DeclarativeBase):
@@ -20,6 +28,12 @@ class Theme(Base):
     owner_id: Mapped[int | None] = mapped_column(BigInteger, index=True, default=None)
 
     is_builtin: Mapped[bool] = mapped_column(default=False)
+
+    source_name: Mapped[str | None] = mapped_column(String(64), default=None, index=True)
+
+    is_customized: Mapped[bool] = mapped_column(default=False)
+
+    is_deleted: Mapped[bool] = mapped_column(default=False, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

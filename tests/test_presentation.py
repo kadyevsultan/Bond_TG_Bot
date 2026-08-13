@@ -40,7 +40,7 @@ def test_every_text_renders_for_both_modes():
             player = engine.reveal_next(game)
             card = texts.word_card(game, player)
             assert "None" not in card
-            if player.is_spy and mode is SpyMode.CLASSIC:
+            if player.is_spy and mode is not SpyMode.DOUBLE_AGENT:
                 assert game.civilian_word not in card
         assert texts.discussion(game)
 
@@ -87,10 +87,13 @@ def test_vote_keyboard_excludes_voter_and_eliminated():
     assert labels == {"Игрок 3", "Игрок 4", "Игрок 5"}
 
 
-def test_guess_keyboard_indexes_match_theme_words():
-    game = played_game()
-    buttons = [button for row in kb.guess_words(game.theme_words).inline_keyboard for button in row]
-    assert [b.text for b in buttons] == game.theme_words
+def test_guess_verdict_keyboard_has_yes_and_no():
+    actions = {
+        button.callback_data
+        for row in kb.guess_verdict().inline_keyboard
+        for button in row
+    }
+    assert actions == {"game:guess_yes:0", "game:guess_no:0"}
 
 
 def test_tie_texts_and_resolutions_are_covered():
@@ -112,10 +115,36 @@ def test_tie_texts_and_resolutions_are_covered():
     }
 
 
-def test_guess_button_only_in_classic_mode():
+def test_guess_button_hidden_only_for_double_agent():
     def labels(mode):
         game = played_game(mode)
         return {b.text for row in kb.discussion(game).inline_keyboard for b in row}
 
     assert any("называет слово" in t for t in labels(SpyMode.CLASSIC))
+    assert any("называет слово" in t for t in labels(SpyMode.MUSIC))
     assert not any("называет слово" in t for t in labels(SpyMode.DOUBLE_AGENT))
+
+
+def test_music_mode_texts_mention_tracks():
+    game = played_game(SpyMode.MUSIC)
+    spy = game.spies[0]
+    civilian = next(p for p in game.players if not p.is_spy)
+    assert "трек" in texts.word_card(game, civilian)
+    assert "трек" in texts.word_card(game, spy)
+    assert "трек" in texts.discussion(game)
+
+
+def test_user_text_is_escaped_in_html():
+    card = texts.theme_card("Мемы <b>крутые", 5, "вы")
+    assert "&lt;b&gt;крутые" in card
+    assert "<b>крутые" not in card
+
+    word_card = texts.editor_word_card("Тим & Ко", ["a<b"])
+    assert "&amp;" in word_card
+    assert "a&lt;b" in word_card
+
+    assert "&amp;" in texts.added_words(["Тим & Ко"], ["a<b"])
+    assert "&lt;" in texts.confirm_delete("<i>тема")
+    assert "&lt;" in texts.ask_word("<i>тема")
+    assert "&lt;" in texts.ask_similar("<i>слово")
+    assert "&lt;" in texts.word_list("<i>тема", 3)

@@ -28,6 +28,7 @@ ruff = "^0.8.4"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["src/bond_bot/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

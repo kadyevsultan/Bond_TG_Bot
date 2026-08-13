@@ -10,11 +10,14 @@ PAGE_SIZE = 8
 WORDS_PAGE_SIZE = 10
 
 
-def hub() -> InlineKeyboardMarkup:
+def hub(is_admin: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    builder.button(text="📚 Встроенные темы", callback_data=ThemeCB(action="builtin"))
     builder.button(text="📁 Мои темы", callback_data=ThemeCB(action="mine"))
     builder.button(text="🌍 Каталог", callback_data=ThemeCB(action="catalog"))
     builder.button(text="➕ Создать тему", callback_data=ThemeCB(action="create"))
+    if is_admin:
+        builder.button(text="🗑 Корзина", callback_data=ThemeCB(action="trash"))
     builder.button(text="🏠 В меню", callback_data=MenuCB(action="home"))
     builder.adjust(1)
     return builder.as_markup()
@@ -51,6 +54,9 @@ def theme_list(themes: list[Theme], action: str, page: int, total: int) -> Inlin
 
 
 def theme_card(theme: Theme, can_edit: bool, can_delete: bool, page: int) -> InlineKeyboardMarkup:
+    if theme.is_deleted:
+        return deleted_theme_card(theme, can_restore=can_delete)
+
     builder = InlineKeyboardBuilder()
     builder.button(
         text="🎮 Играть с этой темой",
@@ -74,12 +80,29 @@ def theme_card(theme: Theme, can_edit: bool, can_delete: bool, page: int) -> Inl
             text="👀 Посмотреть слова",
             callback_data=ThemeCB(action="words", theme_id=theme.id),
         )
+    if can_edit and theme.is_builtin:
+        builder.button(
+            text="📥 Скопировать себе",
+            callback_data=ThemeCB(action="copy", theme_id=theme.id),
+        )
     if can_delete:
         builder.button(
             text="🗑 Удалить тему",
             callback_data=ThemeCB(action="confirm_delete", theme_id=theme.id),
         )
     builder.button(text="⬅️ Назад", callback_data=ThemeCB(action="back_list", page=page))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def deleted_theme_card(theme: Theme, can_restore: bool) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if can_restore:
+        builder.button(
+            text="♻️ Восстановить тему",
+            callback_data=ThemeCB(action="restore", theme_id=theme.id),
+        )
+    builder.button(text="⬅️ Назад", callback_data=ThemeCB(action="trash"))
     builder.adjust(1)
     return builder.as_markup()
 

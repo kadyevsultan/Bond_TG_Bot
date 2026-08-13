@@ -18,12 +18,12 @@
    │      ┌─────── resolve_tie(REVOTE) ──┐    └────────────┘
    ▼      ▼                              │       │      │
 ┌────────────┐  close_voting() ничья  ┌─────┐    │      │ open_spy_guess()
-│  VOTING    │───────────────────────►│ TIE │    │      │ (только CLASSIC)
+│  VOTING    │───────────────────────►│ TIE │    │      │ (кроме DOUBLE_AGENT)
 └────────────┘                        └─────┘    │      ▼
    ▲    │ close_voting() один лидер      │       │  ┌───────────┐
    │    │                                │       │  │ SPY_GUESS │
    └────┘ open_voting()                  │       │  └───────────┘
-        │                                │       │      │ submit_spy_guess()
+        │                                │       │      │ resolve_spy_guess()
         ▼                                ▼       ▼      ▼
      _eliminate() ──────────────────► ┌──────────────────┐
      (все шпионы выбыли ИЛИ ≤2 живых) │     FINISHED     │ терминальное
@@ -42,8 +42,8 @@
 | `resolve_tie(REVOTE)` | `TIE` | `VOTING` |
 | `resolve_tie(EXTRA_ROUND)` | `TIE` | `DISCUSSION` |
 | `resolve_tie(KICK_ALL)` | `TIE` | через `_eliminate()` |
-| `open_spy_guess()` | любая кроме `FINISHED`, **только `CLASSIC`** | `SPY_GUESS` |
-| `submit_spy_guess()` | `SPY_GUESS` | `FINISHED` |
+| `open_spy_guess()` | любая кроме `FINISHED`, **кроме `DOUBLE_AGENT`** | `SPY_GUESS` |
+| `resolve_spy_guess()` | `SPY_GUESS` | `FINISHED` |
 | `_eliminate()` | — | `DISCUSSION` или `FINISHED` |
 
 Любой вызов в неподходящей фазе бросает `GameError` — это защита от старых callback'ов,

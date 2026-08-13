@@ -10,7 +10,7 @@ from bond_bot.domain.entities import Game, Phase, SpyMode, TieResolution
 from bond_bot.infrastructure.database.repository import ThemeRepository
 from bond_bot.infrastructure.database.session import get_session
 from bond_bot.presentation import texts
-from bond_bot.presentation.callbacks import GameCB, GuessCB, MenuCB, SetupCB
+from bond_bot.presentation.callbacks import GameCB, MenuCB, SetupCB
 from bond_bot.presentation.keyboards import game as kb
 from bond_bot.presentation.states import Setup
 
@@ -20,6 +20,11 @@ TIE_ACTIONS = {
     "tie_revote": TieResolution.REVOTE,
     "tie_kick_all": TieResolution.KICK_ALL,
     "tie_extra_round": TieResolution.EXTRA_ROUND,
+}
+
+GUESS_VERDICTS = {
+    "guess_yes": True,
+    "guess_no": False,
 }
 
 
@@ -282,22 +287,27 @@ async def spy_guess_open(callback: CallbackQuery) -> None:
         await callback.answer(texts.NO_ACTIVE_GAME, show_alert=True)
         return
 
-    engine.open_spy_guess(game)
+    try:
+        engine.open_spy_guess(game)
+    except engine.GameError as error:
+        await callback.answer(str(error), show_alert=True)
+        return
+
     await callback.message.edit_text(
-        texts.SPY_GUESS_PICK,
-        reply_markup=kb.guess_words(game.theme_words),
+        texts.SPY_GUESS_VERDICT,
+        reply_markup=kb.guess_verdict(),
     )
     await callback.answer()
 
 
-@router.callback_query(GuessCB.filter())
-async def spy_guess_submit(callback: CallbackQuery, callback_data: GuessCB) -> None:
+@router.callback_query(GameCB.filter(F.action.in_(GUESS_VERDICTS)))
+async def spy_guess_verdict(callback: CallbackQuery, callback_data: GameCB) -> None:
     game = registry.get(callback.message.chat.id)
     if game is None or game.phase is not Phase.SPY_GUESS:
         await callback.answer(texts.NO_ACTIVE_GAME, show_alert=True)
         return
 
-    engine.submit_spy_guess(game, game.theme_words[callback_data.index])
+    engine.resolve_spy_guess(game, GUESS_VERDICTS[callback_data.action])
     await show_result(callback, game)
     await callback.answer()
 

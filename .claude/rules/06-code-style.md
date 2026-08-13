@@ -80,7 +80,7 @@ from .keyboards.game import discussion, main_menu, tie
 
 ```bash
 poetry run ruff check src/ tests/     # line-length 100, select = E,F,I,UP,B,SIM
-poetry run pytest                      # 78 тестов, asyncio_mode = auto
+poetry run pytest                      # 86 тестов, asyncio_mode = auto
 ```
 
 Обе команды должны проходить перед тем, как объявлять работу законченной.

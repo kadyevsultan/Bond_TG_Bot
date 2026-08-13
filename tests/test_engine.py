@@ -10,10 +10,10 @@ from bond_bot.domain.engine import (
     open_spy_guess,
     open_voting,
     pending_voters,
+    resolve_spy_guess,
     resolve_tie,
     reveal_next,
     start_game,
-    submit_spy_guess,
 )
 from bond_bot.domain.entities import (
     Game,
@@ -221,27 +221,47 @@ def test_resolve_tie_without_tie_fails():
 def test_correct_guess_wins_for_spies():
     game = new_game()
     open_spy_guess(game)
-    assert submit_spy_guess(game, game.civilian_word) is True
+    assert resolve_spy_guess(game, True) is True
     assert game.outcome is Outcome.SPIES_BY_GUESS
     assert not game.outcome.civilians_won
 
 
 def test_wrong_guess_loses_immediately():
     game = new_game()
-    wrong = next(w for w in game.theme_words if w != game.civilian_word)
     open_spy_guess(game)
-    assert submit_spy_guess(game, wrong) is False
+    assert resolve_spy_guess(game, False) is False
     assert game.outcome is Outcome.CIVILIANS_BY_WRONG_GUESS
+
+
+def test_verdict_outside_spy_guess_phase_fails():
+    game = new_game()
+    with pytest.raises(GameError):
+        resolve_spy_guess(game, True)
 
 
 def test_guess_is_final_and_cannot_be_repeated():
     game = new_game()
     open_spy_guess(game)
-    submit_spy_guess(game, game.civilian_word)
+    resolve_spy_guess(game, True)
     with pytest.raises(GameError):
-        submit_spy_guess(game, game.civilian_word)
+        resolve_spy_guess(game, True)
     with pytest.raises(GameError):
         open_spy_guess(game)
+
+
+def test_music_mode_hides_word_from_spy():
+    game = new_game(mode=SpyMode.MUSIC)
+    for player in game.players:
+        if player.is_spy:
+            assert player.word is None
+        else:
+            assert player.word == game.civilian_word
+
+
+def test_music_mode_keeps_spy_guess():
+    game = new_game(mode=SpyMode.MUSIC)
+    open_spy_guess(game)
+    assert game.phase is Phase.SPY_GUESS
 
 
 def test_double_agent_mode_has_no_spy_guess():

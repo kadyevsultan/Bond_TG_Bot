@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.4.1
+
+      - name: Install project with locked dev tools
+        run: poetry install --with dev
+
+      - name: Create fake .env
+        run: printf 'BOT_TOKEN=123:fake\nADMIN_IDS=\n' > .env
+
+      - name: Lint
+        run: poetry run ruff check src/ tests/
+
+      - name: Tests
+        run: poetry run pytest -q
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.AD_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.AD_SSH_HOST }}" >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host alwaysdata
+            HostName ${{ secrets.AD_SSH_HOST }}
+            User ${{ secrets.AD_SSH_USER }}
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+          EOF
+
+      - name: Upload code
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.env' \
+            --exclude 'venv' \
+            --exclude '.venv' \
+            --exclude 'data' \
+            --exclude '__pycache__' \
+            --exclude '.pytest_cache' \
+            --exclude '.ruff_cache' \
+            --exclude 'docs_claude' \
+            --exclude '.claude' \
+            ./ alwaysdata:bond_bot/
+
+      - name: Write server config
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+          AD_API_KEY: ${{ secrets.AD_API_KEY }}
+          AD_SERVICE_ID: ${{ secrets.AD_SERVICE_ID }}
+        run: |
+          printf '%s\n%s\n' "$BOT_TOKEN" "$ADMIN_IDS" | ssh alwaysdata 'umask 077 && {
+            read -r token
+            read -r admins
+            printf "BOT_TOKEN=%s\nADMIN_IDS=%s\nDB_PATH=%s/bond_data/bond_bot.sqlite3\n" \
+              "$token" "$admins" "$HOME" > ~/bond_bot/.env
+          }'
+          printf 'AD_API_KEY=%s\nAD_SERVICE_ID=%s\n' "$AD_API_KEY" "$AD_SERVICE_ID" \
+            | ssh alwaysdata 'umask 077 && cat > ~/.bond_deploy'
+
+      - name: Install and restart
+        run: ssh alwaysdata 'bash ~/bond_bot/scripts/alwaysdata/deploy.sh'

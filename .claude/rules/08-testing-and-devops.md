@@ -77,14 +77,15 @@ Poetry 2.4.1, Python 3.12.2. `virtualenvs.create = false` в
 
 ## Деплой
 
-Выбран **serv00** (бесплатный FreeBSD-шелл, без карты) — пошаговая инструкция и скрипты:
-[docs_claude/project/deploy/serv00.md](../../docs_claude/project/deploy/serv00.md),
-`scripts/serv00/`. Там Docker не работает, бот живёт в venv под `tmux`, автозапуск через
-`cron @reboot` плюс watchdog каждые 5 минут.
+Выбран **alwaysdata**, бесплатный план — инструкция и скрипты:
+[docs_claude/project/deploy/alwaysdata.md](../../docs_claude/project/deploy/alwaysdata.md),
+`scripts/alwaysdata/`. Linux, без карты, без срока; бот запускается из venv как **служба**
+платформы (`Advanced → Services`), она же его перезапускает — свой watchdog не нужен.
+Лимиты: 100 МБ диска и 256 МБ RAM, наш замер — 29 МБ зависимостей плюс ~1 МБ база.
 
-Главный нерешённый риск serv00: `pydantic-core` не имеет колёс для FreeBSD и требует Rust,
-которого в документации serv00 нет. Проверяется скриптом `scripts/serv00/check-deps.sh`
-**до** всей остальной установки.
+serv00 остаётся резервным вариантом ([serv00.md](../../docs_claude/project/deploy/serv00.md),
+`scripts/serv00/`): там 3 ГБ и 512 МБ RAM, но FreeBSD, ручной watchdog и главный риск —
+`pydantic-core` без колёс для FreeBSD требует Rust. Регистрация там идёт волнами.
 
 Docker-конфигурация остаётся для любого Linux-хостинга и для локальной работы.
 
@@ -125,7 +126,20 @@ docker compose logs -f
 до валидации токена, `MIGRATIONS_DIR` разрешается в
 `/app/.venv/lib/python3.12/site-packages/bond_bot/migrations`.
 
-CI по-прежнему нет — `pytest` и `ruff` запускаются руками. Бэкап базы владелец настраивает
+CI/CD есть: [.github/workflows/ci.yml](../../.github/workflows/ci.yml). На каждый пуш и PR —
+`poetry install --with dev` → `ruff` → `pytest`; на пуш в `main` дополнительно деплой на
+alwaysdata: `rsync` кода, `.env` из секретов, `pip install -e .`, перезапуск службы.
+
+Два правила, которые легко нарушить:
+
+- **В CI ставить dev-зависимости через Poetry с лок-файлом, а не `pip install ruff`.** Свежий
+  ruff из pip добавил правило `UP042` и падал на `class SpyMode(str, Enum)`, хотя проект
+  закреплён на `ruff ^0.8.4`. Локально зелено, в CI красно — проверено 2026-08-13
+- **Тестам в CI нужен фиктивный `.env`** (`BOT_TOKEN=123:fake`): `Settings()` создаётся при
+  импорте `bond_bot.config`
+
+`concurrency: deploy-production` не даёт двум деплоям пересечься: два процесса на одном токене
+дают `TelegramConflictError`. Бэкап базы владелец настраивает
 на сервере отдельно.
 
 ## Git

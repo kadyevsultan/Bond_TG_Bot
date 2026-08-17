@@ -32,6 +32,6 @@ if [ ! -f "$APP_DIR/.env" ]; then
     exit 1
 fi
 
-bash "$APP_DIR/scripts/alwaysdata/restart.sh"
+AD_ACCOUNT="${AD_ACCOUNT:-$(basename "$HOME")}" bash "$APP_DIR/scripts/alwaysdata/restart.sh"
 
 echo "занято: $(du -sh "$HOME" | cut -f1) из 100M"

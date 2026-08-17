@@ -13,6 +13,9 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      POETRY_VIRTUALENVS_CREATE: "true"
+      POETRY_VIRTUALENVS_IN_PROJECT: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -24,7 +27,9 @@ jobs:
         run: pipx install poetry==2.4.1
 
       - name: Install project with locked dev tools
-        run: poetry install --with dev
+        run: |
+          poetry env use "$(which python)"
+          poetry install --with dev
 
       - name: Create fake .env
         run: printf 'BOT_TOKEN=123:fake\nADMIN_IDS=\n' > .env

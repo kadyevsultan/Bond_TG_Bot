@@ -130,7 +130,16 @@ CI/CD есть: [.github/workflows/ci.yml](../../.github/workflows/ci.yml). На
 `poetry install --with dev` → `ruff` → `pytest`; на пуш в `main` дополнительно деплой на
 alwaysdata: `rsync` кода, `.env` из секретов, `pip install -e .`, перезапуск службы.
 
-Два правила, которые легко нарушить:
+Три правила, которые легко нарушить:
+
+- **В CI обязательны `POETRY_VIRTUALENVS_CREATE=true` и `POETRY_VIRTUALENVS_IN_PROJECT=true`
+  плюс `poetry env use "$(which python)"`.** В [poetry.toml](../../poetry.toml) стоит
+  `virtualenvs.create = false` — это верно для машины владельца, где зависимости лежат в
+  `./venv`, но в CI из-за этой настройки Poetry ставит пакеты в системный Python раннера и
+  падает на `PermissionError: /usr/include/python3.12/greenlet` и
+  `Cannot uninstall idna 3.6, RECORD file not found. Hint: The package was installed by
+  debian`. Переменные окружения у Poetry приоритетнее файла конфигурации. Проверено
+  2026-08-13 на живом прогоне
 
 - **В CI ставить dev-зависимости через Poetry с лок-файлом, а не `pip install ruff`.** Свежий
   ruff из pip добавил правило `UP042` и падал на `class SpyMode(str, Enum)`, хотя проект
